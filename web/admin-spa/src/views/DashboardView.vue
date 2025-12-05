@@ -827,7 +827,12 @@
                 :key="`${record.keyId}-${record.timestamp}-${record.model}`"
                 class="hover:bg-gray-50 dark:hover:bg-gray-800"
               >
-                <td class="px-3 py-2 text-xs">{{ formatUsageTimestamp(record.timestamp) }}</td>
+                <td class="px-3 py-2 text-xs">
+                  <div>{{ formatUsageTimestamp(record.timestamp) }}</div>
+                  <div class="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                    {{ formatRelativeTime(record.timestamp) }}
+                  </div>
+                </td>
                 <td class="px-3 py-2 text-xs">{{ record.keyName || record.keyId }}</td>
                 <td class="px-3 py-2 text-xs">{{ record.model }}</td>
                 <td class="px-3 py-2 text-xs">
@@ -914,6 +919,7 @@ import { useThemeStore } from '@/stores/theme'
 import Chart from 'chart.js/auto'
 import { apiClient } from '@/config/api'
 import dayjs from 'dayjs'
+// 使用浏览器本地时区渲染时间，避免重复偏移
 
 const dashboardStore = useDashboardStore()
 const themeStore = useThemeStore()
@@ -1030,9 +1036,23 @@ function formatCostValue(cost) {
 
 function formatUsageTimestamp(ts) {
   if (!ts) return '-'
-  const offset = Number(dashboardData.value.systemTimezone ?? 0)
-  // 使用简单的加小时方式，避免依赖时区插件
-  return dayjs(ts).add(offset, 'hour').format('YYYY-MM-DD HH:mm:ss')
+  return dayjs(ts).format('MM-DD HH:mm:ss')
+}
+
+function formatRelativeTime(ts) {
+  if (!ts) return ''
+  const target = dayjs(ts)
+  const now = dayjs()
+
+  const diffMinutes = now.diff(target, 'minute')
+  const diffHours = now.diff(target, 'hour')
+  const diffDays = now.diff(target, 'day')
+
+  if (diffMinutes < 1) return '刚刚'
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`
+  if (diffHours < 24) return `${diffHours}小时前`
+  if (diffDays < 7) return `${diffDays}天前`
+  return target.format('YYYY-MM-DD')
 }
 
 // 使用系统时区(UTC+8)获取某天起止时间
