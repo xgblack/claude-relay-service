@@ -2397,7 +2397,13 @@ router.get('/usage-records', authenticateAdmin, async (req, res) => {
           if (account) {
             const info = {
               id,
-              name: account.name || account.email || id,
+              name:
+                account.name ||
+                account.displayName ||
+                account.label ||
+                account.description ||
+                account.email ||
+                id,
               type: svc.type,
               status: account.status || account.isActive
             }
@@ -2417,9 +2423,11 @@ router.get('/usage-records', authenticateAdmin, async (req, res) => {
     for (const record of pageRecords) {
       const accountInfo = await resolveAccountInfo(record.accountId, record.accountType)
       const resolvedType = accountInfo?.type || record.accountType || 'unknown'
+      const resolvedName = accountInfo?.name || record.accountName || record.accountId || null
+      record.accountType = resolvedType
       enrichedRecords.push({
         ...record,
-        accountName: accountInfo?.name || null,
+        accountName: resolvedName,
         accountStatus: accountInfo?.status ?? null,
         accountType: resolvedType,
         accountTypeName: accountTypeNames[resolvedType] || '未知渠道'

@@ -698,7 +698,11 @@
 
             <select
               class="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-              :value="usageFilters.accountId ? `${usageFilters.accountId}::${usageFilters.accountType}` : ''"
+              :value="
+                usageFilters.accountId
+                  ? `${usageFilters.accountId}::${usageFilters.accountType}`
+                  : ''
+              "
               @change="handleUsageAccountChange($event.target.value)"
             >
               <option value="">全部账户</option>
@@ -722,7 +726,9 @@
               </option>
             </select>
 
-            <div class="flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-1 py-1 text-xs dark:border-gray-700 dark:bg-gray-800">
+            <div
+              class="flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-1 py-1 text-xs dark:border-gray-700 dark:bg-gray-800"
+            >
               <button
                 :class="[
                   'rounded px-2 py-1 font-medium transition-colors',
@@ -752,7 +758,9 @@
               :value="usagePagination.pageSize"
               @change="handleUsagePageSizeChange(Number($event.target.value))"
             >
-              <option v-for="size in usagePageSizeOptions" :key="size" :value="size">每页 {{ size }}</option>
+              <option v-for="size in usagePageSizeOptions" :key="size" :value="size">
+                每页 {{ size }}
+              </option>
             </select>
 
             <button
@@ -764,13 +772,20 @@
           </div>
         </div>
 
-        <div v-if="usageError" class="rounded-md bg-red-50 p-3 text-xs text-red-600 dark:bg-red-900/30 dark:text-red-200">
+        <div
+          v-if="usageError"
+          class="rounded-md bg-red-50 p-3 text-xs text-red-600 dark:bg-red-900/30 dark:text-red-200"
+        >
           {{ usageError }}
         </div>
 
         <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200 text-left text-xs text-gray-700 dark:divide-gray-700 dark:text-gray-200">
-            <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+          <table
+            class="min-w-full divide-y divide-gray-200 text-left text-xs text-gray-700 dark:divide-gray-700 dark:text-gray-200"
+          >
+            <thead
+              class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+            >
               <tr>
                 <th class="px-3 py-2">时间</th>
                 <th class="px-3 py-2">API Key</th>
@@ -787,31 +802,66 @@
                 <th class="px-3 py-2 text-right">耗时(ms)</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 bg-white text-sm dark:divide-gray-700 dark:bg-gray-900">
+            <tbody
+              class="divide-y divide-gray-200 bg-white text-sm dark:divide-gray-700 dark:bg-gray-900"
+            >
               <tr v-if="usageLoading">
-                <td colspan="13" class="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                <td
+                  class="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400"
+                  colspan="13"
+                >
                   正在加载调用明细...
                 </td>
               </tr>
               <tr v-else-if="usageRecords.length === 0">
-                <td colspan="13" class="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                <td
+                  class="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400"
+                  colspan="13"
+                >
                   当前时间范围内无调用记录
                 </td>
               </tr>
-              <tr v-else v-for="record in usageRecords" :key="`${record.keyId}-${record.timestamp}-${record.model}`" class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                <td class="px-3 py-2 text-xs">{{ record.timestamp }}</td>
+              <tr
+                v-for="record in usageRecords"
+                v-else
+                :key="`${record.keyId}-${record.timestamp}-${record.model}`"
+                class="hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <td class="px-3 py-2 text-xs">
+                  {{
+                    dayjs(record.timestamp)
+                      .utcOffset(dashboardData.systemTimezone || 8)
+                      .format('YYYY-MM-DD HH:mm:ss')
+                  }}
+                </td>
                 <td class="px-3 py-2 text-xs">{{ record.keyName || record.keyId }}</td>
                 <td class="px-3 py-2 text-xs">{{ record.model }}</td>
-                <td class="px-3 py-2 text-xs">{{ record.accountName || record.accountId || '-' }}</td>
-                <td class="px-3 py-2 text-xs">{{ record.accountTypeName || record.accountType }}</td>
-                <td class="px-3 py-2 text-right text-xs">{{ formatNumber(record.inputTokens || 0) }}</td>
-                <td class="px-3 py-2 text-right text-xs">{{ formatNumber(record.outputTokens || 0) }}</td>
-                <td class="px-3 py-2 text-right text-xs">{{ formatNumber(record.cacheCreateTokens || 0) }}</td>
-                <td class="px-3 py-2 text-right text-xs">{{ formatNumber(record.cacheReadTokens || 0) }}</td>
-                <td class="px-3 py-2 text-right text-xs font-semibold text-blue-600 dark:text-blue-300">
+                <td class="px-3 py-2 text-xs">
+                  {{ record.accountName || record.accountId || '-' }}
+                </td>
+                <td class="px-3 py-2 text-xs">
+                  {{ record.accountTypeName || record.accountType }}
+                </td>
+                <td class="px-3 py-2 text-right text-xs">
+                  {{ formatNumber(record.inputTokens || 0) }}
+                </td>
+                <td class="px-3 py-2 text-right text-xs">
+                  {{ formatNumber(record.outputTokens || 0) }}
+                </td>
+                <td class="px-3 py-2 text-right text-xs">
+                  {{ formatNumber(record.cacheCreateTokens || 0) }}
+                </td>
+                <td class="px-3 py-2 text-right text-xs">
+                  {{ formatNumber(record.cacheReadTokens || 0) }}
+                </td>
+                <td
+                  class="px-3 py-2 text-right text-xs font-semibold text-blue-600 dark:text-blue-300"
+                >
                   {{ formatNumber(record.totalTokens || 0) }}
                 </td>
-                <td class="px-3 py-2 text-right text-xs font-semibold text-green-600 dark:text-green-300">
+                <td
+                  class="px-3 py-2 text-right text-xs font-semibold text-green-600 dark:text-green-300"
+                >
                   {{ formatCostValue(record.cost || 0) }}
                 </td>
                 <td class="px-3 py-2 text-xs">
@@ -869,6 +919,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useThemeStore } from '@/stores/theme'
 import Chart from 'chart.js/auto'
 import { apiClient } from '@/config/api'
+import dayjs from 'dayjs'
 
 const dashboardStore = useDashboardStore()
 const themeStore = useThemeStore()
@@ -942,8 +993,19 @@ const chartColors = computed(() => ({
 
 // 调用明细状态
 const usageRecords = ref([])
-const usagePagination = ref({ currentPage: 1, pageSize: 20, totalRecords: 0, totalPages: 0 })
-const usageFilters = ref({ model: '', accountId: '', accountType: '', keyId: '', sortOrder: 'desc' })
+const usagePagination = ref({
+  currentPage: 1,
+  pageSize: 20,
+  totalRecords: 0,
+  totalPages: 0
+})
+const usageFilters = ref({
+  model: '',
+  accountId: '',
+  accountType: '',
+  keyId: '',
+  sortOrder: 'desc'
+})
 const usageAvailableFilters = ref({ models: [], accounts: [], keys: [], dateRange: {} })
 const usageLoading = ref(false)
 const usageError = ref('')
