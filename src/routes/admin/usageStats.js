@@ -8,6 +8,7 @@ const geminiApiAccountService = require('../../services/geminiApiAccountService'
 const openaiAccountService = require('../../services/openaiAccountService')
 const openaiResponsesAccountService = require('../../services/openaiResponsesAccountService')
 const droidAccountService = require('../../services/droidAccountService')
+const accountNameCacheService = require('../../services/accountNameCacheService')
 const redis = require('../../models/redis')
 const { authenticateAdmin } = require('../../middleware/auth')
 const logger = require('../../utils/logger')
@@ -1876,6 +1877,8 @@ router.get('/api-keys/:keyId/usage-records', authenticateAdmin, async (req, res)
       gemini: 'Gemini',
       'gemini-api': 'Gemini API',
       droid: 'Droid',
+      'azure-openai': 'Azure OpenAI',
+      bedrock: 'Bedrock',
       unknown: '未知渠道'
     }
 
@@ -1890,37 +1893,113 @@ router.get('/api-keys/:keyId/usage-records', authenticateAdmin, async (req, res)
       { type: 'droid', getter: (id) => droidAccountService.getAccount(id) }
     ]
 
+    // 构建账户索引，按 id -> { name, platform }
+    const accountIndex = new Map()
+
+    const addAccountToIndex = (id, platform, name, extra = {}) => {
+      if (!id) return
+      const displayName =
+        name || extra.displayName || extra.label || extra.description || extra.email || id
+      accountIndex.set(id, { name: displayName, platform })
+      // 处理带前缀的ID，例如 api: / responses:
+      if (id.startsWith('api:')) {
+        const raw = id.substring(4)
+        accountIndex.set(raw, { name: displayName, platform })
+      } else if (id.startsWith('responses:')) {
+        const raw = id.substring(10)
+        accountIndex.set(raw, { name: displayName, platform })
+      }
+    }
+
+    const loadAccountsSafe = async (label, loader, platform, prefix = '') => {
+      try {
+        const list = await loader()
+        if (Array.isArray(list)) {
+          list.forEach((acc) => addAccountToIndex(prefix + acc.id, platform, acc.name, acc))
+          logger.warn(
+            `UsageRecords account index: loaded ${list.length} ${label} accounts (platform=${platform}${
+              prefix ? ', prefix=' + prefix : ''
+            })`
+          )
+        }
+      } catch (e) {
+        logger.warn(`UsageRecords account index: skip ${label}: ${e.message}`)
+      }
+    }
+
+    await Promise.all([
+      loadAccountsSafe('claude', () => claudeAccountService.getAllAccounts(), 'claude'),
+      loadAccountsSafe(
+        'claude-console',
+        () => claudeConsoleAccountService.getAllAccounts(),
+        'claude-console'
+      ),
+      loadAccountsSafe('gemini', () => geminiAccountService.getAllAccounts(), 'gemini'),
+      loadAccountsSafe('gemini-api', () => geminiApiAccountService.getAllAccounts(), 'gemini-api', 'api:'),
+      loadAccountsSafe('openai', () => openaiAccountService.getAllAccounts(), 'openai'),
+      loadAccountsSafe(
+        'openai-responses',
+        () => openaiResponsesAccountService.getAllAccounts(),
+        'openai-responses',
+        'responses:'
+      ),
+      loadAccountsSafe('azure-openai', () => azureOpenaiAccountService.getAllAccounts(), 'azure-openai'),
+      loadAccountsSafe('bedrock', () => bedrockAccountService.getAllAccounts(), 'bedrock'),
+      loadAccountsSafe('droid', () => droidAccountService.getAllAccounts(), 'droid'),
+      loadAccountsSafe('ccr', () => ccrAccountService.getAllAccounts(), 'ccr')
+    ])
+
+    logger.warn(`UsageRecords account index built, size=${accountIndex.size}`)
+    logger.warn('UsageRecords account index sample (前5条):', Array.from(accountIndex.entries()).slice(0, 5))
     const accountCache = new Map()
     const resolveAccountInfo = async (id, type) => {
       if (!id) {
         return null
       }
 
-      const cacheKey = `${type || 'any'}:${id}`
+      const normalizedType = !type || type === 'unknown' ? null : type
+      const cacheKey = `${normalizedType || 'any'}:${id}`
       if (accountCache.has(cacheKey)) {
         return accountCache.get(cacheKey)
       }
 
-      const servicesToTry = type
-        ? accountServices.filter((svc) => svc.type === type)
-        : accountServices
-
-      for (const service of servicesToTry) {
-        try {
-          const account = await service.getter(id)
-          if (account) {
-            const info = {
-              id,
-              name: account.name || account.email || id,
-              type: service.type,
-              status: account.status || account.isActive
-            }
-            accountCache.set(cacheKey, info)
-            return info
+      const pickFromIndex = (lookupId) => {
+        const hit = accountIndex.get(lookupId)
+        if (hit) {
+          return {
+            id,
+            name: hit.name || lookupId,
+            type: hit.platform || normalizedType || 'unknown',
+            status: null
           }
-        } catch (error) {
-          logger.debug(`⚠️ Failed to resolve account ${id} via ${service.type}: ${error.message}`)
         }
+        return null
+      }
+
+      let info = pickFromIndex(id)
+      if (!info && id.startsWith('api:')) {
+        info = pickFromIndex(id.substring(4))
+      } else if (!info && id.startsWith('responses:')) {
+        info = pickFromIndex(id.substring(10))
+      }
+
+      if (info) {
+        accountCache.set(cacheKey, info)
+        return info
+      }
+
+      // 最后回退 accountNameCacheService（可能包含分组或旧缓存）
+      const cachedName = accountNameCacheService.getAccountDisplayName(id)
+      const cachedPlatform = accountNameCacheService.getAccountPlatform(id)
+      if (cachedName || cachedPlatform) {
+        info = {
+          id,
+          name: cachedName || id,
+          type: cachedPlatform || normalizedType || 'unknown',
+          status: null
+        }
+        accountCache.set(cacheKey, info)
+        return info
       }
 
       accountCache.set(cacheKey, null)
@@ -2238,6 +2317,62 @@ router.get('/usage-records', authenticateAdmin, async (req, res) => {
       })
     }
 
+    // 构建账户索引：id -> { name, platform }
+    const accountIndex = new Map()
+
+    const addAccountToIndex = (id, platform, name, extra = {}) => {
+      if (!id) return
+      const displayName =
+        name || extra.displayName || extra.label || extra.description || extra.email || id
+      accountIndex.set(id, { name: displayName, platform })
+      if (id.startsWith('api:')) {
+        const raw = id.substring(4)
+        accountIndex.set(raw, { name: displayName, platform })
+      } else if (id.startsWith('responses:')) {
+        const raw = id.substring(10)
+        accountIndex.set(raw, { name: displayName, platform })
+      }
+    }
+
+    const loadAccountsSafe = async (label, loader, platform, prefix = '') => {
+      try {
+        const list = await loader()
+        if (Array.isArray(list)) {
+          list.forEach((acc) => addAccountToIndex(prefix + acc.id, platform, acc.name, acc))
+        }
+      } catch (e) {
+        logger.debug(`UsageRecords(account-index) skip ${label}: ${e.message}`)
+      }
+    }
+
+    await Promise.all([
+      loadAccountsSafe('claude', () => claudeAccountService.getAllAccounts(), 'claude'),
+      loadAccountsSafe(
+        'claude-console',
+        () => claudeConsoleAccountService.getAllAccounts(),
+        'claude-console'
+      ),
+      loadAccountsSafe('gemini', () => geminiAccountService.getAllAccounts(), 'gemini'),
+      loadAccountsSafe('gemini-api', () => geminiApiAccountService.getAllAccounts(), 'gemini-api', 'api:'),
+      loadAccountsSafe('openai', () => openaiAccountService.getAllAccounts(), 'openai'),
+      loadAccountsSafe(
+        'openai-responses',
+        () => openaiResponsesAccountService.getAllAccounts(),
+        'openai-responses',
+        'responses:'
+      ),
+      loadAccountsSafe('azure-openai', () => azureOpenaiAccountService.getAllAccounts(), 'azure-openai'),
+      loadAccountsSafe('bedrock', () => bedrockAccountService.getAllAccounts(), 'bedrock'),
+      loadAccountsSafe('droid', () => droidAccountService.getAllAccounts(), 'droid'),
+      loadAccountsSafe('ccr', () => ccrAccountService.getAllAccounts(), 'ccr')
+    ])
+
+    //logger.info(`UsageRecords account index built, size=${accountIndex.size}`)
+    //logger.info(
+    //  'UsageRecords account index sample (前5条):',
+    //  Array.from(accountIndex.entries()).slice(0, 5)
+    //)
+
     // 预取 key 信息
     for (const id of keyIds) {
       try {
@@ -2332,7 +2467,8 @@ router.get('/usage-records', authenticateAdmin, async (req, res) => {
           if (!accountOptionMap.has(key)) {
             accountOptionMap.set(key, {
               id: record.accountId,
-              accountType: record.accountType || 'unknown'
+              accountType: record.accountType || 'unknown',
+              name: record.accountName || null
             })
           }
         }
@@ -2361,16 +2497,6 @@ router.get('/usage-records', authenticateAdmin, async (req, res) => {
 
     // 账户信息补全
     const accountCache = new Map()
-    const accountServices = [
-      { type: 'claude', getter: (id) => claudeAccountService.getAccount(id) },
-      { type: 'claude-console', getter: (id) => claudeConsoleAccountService.getAccount(id) },
-      { type: 'ccr', getter: (id) => ccrAccountService.getAccount(id) },
-      { type: 'openai', getter: (id) => openaiAccountService.getAccount(id) },
-      { type: 'openai-responses', getter: (id) => openaiResponsesAccountService.getAccount(id) },
-      { type: 'gemini', getter: (id) => geminiAccountService.getAccount(id) },
-      { type: 'gemini-api', getter: (id) => geminiApiAccountService.getAccount(id) },
-      { type: 'droid', getter: (id) => droidAccountService.getAccount(id) }
-    ]
 
     const accountTypeNames = {
       claude: 'Claude官方',
@@ -2381,6 +2507,8 @@ router.get('/usage-records', authenticateAdmin, async (req, res) => {
       gemini: 'Gemini',
       'gemini-api': 'Gemini API',
       droid: 'Droid',
+      'azure-openai': 'Azure OpenAI',
+      bedrock: 'Bedrock',
       unknown: '未知渠道'
     }
 
@@ -2389,30 +2517,26 @@ router.get('/usage-records', authenticateAdmin, async (req, res) => {
       const cacheKey = `${type || 'any'}:${id}`
       if (accountCache.has(cacheKey)) return accountCache.get(cacheKey)
 
-      const servicesToTry = type ? accountServices.filter((svc) => svc.type === type) : accountServices
-
-      for (const svc of servicesToTry) {
-        try {
-          const account = await svc.getter(id)
-          if (account) {
-            const info = {
-              id,
-              name:
-                account.name ||
-                account.displayName ||
-                account.label ||
-                account.description ||
-                account.email ||
-                id,
-              type: svc.type,
-              status: account.status || account.isActive
-            }
-            accountCache.set(cacheKey, info)
-            return info
+      const pickFromIndex = (lookupId) => {
+        const hit = accountIndex.get(lookupId)
+        if (hit) {
+          return {
+            id,
+            name: hit.name || lookupId,
+            type: hit.platform || type || 'unknown',
+            status: null
           }
-        } catch (error) {
-          logger.debug(`⚠️ Failed to resolve account ${id} via ${svc.type}: ${error.message}`)
         }
+        return null
+      }
+
+      let info = pickFromIndex(id)
+      if (!info && id.startsWith('api:')) info = pickFromIndex(id.substring(4))
+      if (!info && id.startsWith('responses:')) info = pickFromIndex(id.substring(10))
+
+      if (info) {
+        accountCache.set(cacheKey, info)
+        return info
       }
 
       accountCache.set(cacheKey, null)
@@ -2423,7 +2547,21 @@ router.get('/usage-records', authenticateAdmin, async (req, res) => {
     for (const record of pageRecords) {
       const accountInfo = await resolveAccountInfo(record.accountId, record.accountType)
       const resolvedType = accountInfo?.type || record.accountType || 'unknown'
-      const resolvedName = accountInfo?.name || record.accountName || record.accountId || null
+      const resolvedName =
+        accountInfo?.name || record.accountName || record.accountId || record.keyName || null
+
+      // 更新 accountOptionMap 的记录，确保后续 filters 使用解析后的类型与名称
+      if (record.accountId) {
+        const optKey = `${record.accountId}:${resolvedType}`
+        if (!accountOptionMap.has(optKey)) {
+          accountOptionMap.set(optKey, {
+            id: record.accountId,
+            accountType: resolvedType,
+            name: resolvedName || record.accountId
+          })
+        }
+      }
+
       record.accountType = resolvedType
       enrichedRecords.push({
         ...record,
@@ -2434,13 +2572,16 @@ router.get('/usage-records', authenticateAdmin, async (req, res) => {
       })
     }
 
+    // logger.info('UsageRecords enriched sample (前3条):', enrichedRecords.slice(0, 3))
+
     const accountOptions = []
     for (const option of accountOptionMap.values()) {
       const info = await resolveAccountInfo(option.id, option.accountType)
       const resolvedType = info?.type || option.accountType || 'unknown'
+      const resolvedName = info?.name || option.name || option.id
       accountOptions.push({
         id: option.id,
-        name: info?.name || option.id,
+        name: resolvedName,
         accountType: resolvedType,
         accountTypeName: accountTypeNames[resolvedType] || '未知渠道'
       })

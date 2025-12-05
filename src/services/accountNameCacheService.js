@@ -204,6 +204,36 @@ class AccountNameCacheService {
   }
 
   /**
+   * 获取账户平台（如 claude/openai），若未知返回 null
+   */
+  getAccountPlatform(accountId) {
+    if (!accountId) return null
+
+    if (accountId.startsWith('group:')) {
+      const groupId = accountId.substring(6)
+      const group = this.groupCache.get(groupId)
+      return group?.platform || null
+    }
+
+    const cached = this.accountCache.get(accountId)
+    if (cached?.platform) return cached.platform
+
+    let realId = accountId
+    if (accountId.startsWith('api:')) {
+      realId = accountId.substring(4)
+    } else if (accountId.startsWith('responses:')) {
+      realId = accountId.substring(10)
+    }
+
+    if (realId !== accountId) {
+      const cached2 = this.accountCache.get(realId)
+      if (cached2?.platform) return cached2.platform
+    }
+
+    return null
+  }
+
+  /**
    * 获取 API Key 的所有绑定账户显示名称
    * @param {Object} apiKey - API Key 对象
    * @returns {Array<{field: string, platform: string, name: string, accountId: string}>}
