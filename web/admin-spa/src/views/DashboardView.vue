@@ -827,13 +827,7 @@
                 :key="`${record.keyId}-${record.timestamp}-${record.model}`"
                 class="hover:bg-gray-50 dark:hover:bg-gray-800"
               >
-                <td class="px-3 py-2 text-xs">
-                  {{
-                    dayjs(record.timestamp)
-                      .utcOffset(dashboardData.systemTimezone || 8)
-                      .format('YYYY-MM-DD HH:mm:ss')
-                  }}
-                </td>
+                <td class="px-3 py-2 text-xs">{{ formatUsageTimestamp(record.timestamp) }}</td>
                 <td class="px-3 py-2 text-xs">{{ record.keyName || record.keyId }}</td>
                 <td class="px-3 py-2 text-xs">{{ record.model }}</td>
                 <td class="px-3 py-2 text-xs">
@@ -1032,6 +1026,13 @@ function formatCostValue(cost) {
     return `$${cost.toFixed(3)}`
   }
   return `$${cost.toFixed(6)}`
+}
+
+function formatUsageTimestamp(ts) {
+  if (!ts) return '-'
+  const offset = Number(dashboardData.value.systemTimezone ?? 0)
+  // 使用简单的加小时方式，避免依赖时区插件
+  return dayjs(ts).add(offset, 'hour').format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 使用系统时区(UTC+8)获取某天起止时间
