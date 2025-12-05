@@ -673,6 +673,192 @@
         </div>
       </div>
     </div>
+
+    <!-- 调用明细列表 -->
+    <div class="mb-4 sm:mb-6 md:mb-8">
+      <div class="card p-4 sm:p-6">
+        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 sm:text-lg">
+              调用明细
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+              时间范围沿用顶部选择器，默认聚合全部 API Key。
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select
+              class="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+              :value="usageFilters.model"
+              @change="handleUsageFilterChange('model', $event.target.value)"
+            >
+              <option value="">全部模型</option>
+              <option v-for="m in usageAvailableFilters.models" :key="m" :value="m">{{ m }}</option>
+            </select>
+
+            <select
+              class="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+              :value="usageFilters.accountId ? `${usageFilters.accountId}::${usageFilters.accountType}` : ''"
+              @change="handleUsageAccountChange($event.target.value)"
+            >
+              <option value="">全部账户</option>
+              <option
+                v-for="acc in usageAvailableFilters.accounts"
+                :key="`${acc.id}:${acc.accountType}`"
+                :value="`${acc.id}::${acc.accountType}`"
+              >
+                {{ acc.name }} ({{ acc.accountTypeName }})
+              </option>
+            </select>
+
+            <select
+              class="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+              :value="usageFilters.keyId"
+              @change="handleUsageFilterChange('keyId', $event.target.value)"
+            >
+              <option value="">全部 API Key</option>
+              <option v-for="k in usageAvailableFilters.keys" :key="k.id" :value="k.id">
+                {{ k.name }}
+              </option>
+            </select>
+
+            <div class="flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-1 py-1 text-xs dark:border-gray-700 dark:bg-gray-800">
+              <button
+                :class="[
+                  'rounded px-2 py-1 font-medium transition-colors',
+                  usageFilters.sortOrder === 'desc'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-300'
+                ]"
+                @click="handleUsageSortChange('desc')"
+              >
+                时间倒序
+              </button>
+              <button
+                :class="[
+                  'rounded px-2 py-1 font-medium transition-colors',
+                  usageFilters.sortOrder === 'asc'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-300'
+                ]"
+                @click="handleUsageSortChange('asc')"
+              >
+                时间正序
+              </button>
+            </div>
+
+            <select
+              class="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+              :value="usagePagination.pageSize"
+              @change="handleUsagePageSizeChange(Number($event.target.value))"
+            >
+              <option v-for="size in usagePageSizeOptions" :key="size" :value="size">每页 {{ size }}</option>
+            </select>
+
+            <button
+              class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+              @click="loadUsageRecords({ resetPage: true })"
+            >
+              <i class="fas fa-rotate-right mr-1" />刷新
+            </button>
+          </div>
+        </div>
+
+        <div v-if="usageError" class="rounded-md bg-red-50 p-3 text-xs text-red-600 dark:bg-red-900/30 dark:text-red-200">
+          {{ usageError }}
+        </div>
+
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 text-left text-xs text-gray-700 dark:divide-gray-700 dark:text-gray-200">
+            <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+              <tr>
+                <th class="px-3 py-2">时间</th>
+                <th class="px-3 py-2">API Key</th>
+                <th class="px-3 py-2">模型</th>
+                <th class="px-3 py-2">账户</th>
+                <th class="px-3 py-2">账户类型</th>
+                <th class="px-3 py-2 text-right">输入Token</th>
+                <th class="px-3 py-2 text-right">输出Token</th>
+                <th class="px-3 py-2 text-right">缓存创建Token</th>
+                <th class="px-3 py-2 text-right">缓存读取Token</th>
+                <th class="px-3 py-2 text-right">总Token</th>
+                <th class="px-3 py-2 text-right">费用(USD)</th>
+                <th class="px-3 py-2">长上下文</th>
+                <th class="px-3 py-2 text-right">耗时(ms)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 bg-white text-sm dark:divide-gray-700 dark:bg-gray-900">
+              <tr v-if="usageLoading">
+                <td colspan="13" class="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                  正在加载调用明细...
+                </td>
+              </tr>
+              <tr v-else-if="usageRecords.length === 0">
+                <td colspan="13" class="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                  当前时间范围内无调用记录
+                </td>
+              </tr>
+              <tr v-else v-for="record in usageRecords" :key="`${record.keyId}-${record.timestamp}-${record.model}`" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                <td class="px-3 py-2 text-xs">{{ record.timestamp }}</td>
+                <td class="px-3 py-2 text-xs">{{ record.keyName || record.keyId }}</td>
+                <td class="px-3 py-2 text-xs">{{ record.model }}</td>
+                <td class="px-3 py-2 text-xs">{{ record.accountName || record.accountId || '-' }}</td>
+                <td class="px-3 py-2 text-xs">{{ record.accountTypeName || record.accountType }}</td>
+                <td class="px-3 py-2 text-right text-xs">{{ formatNumber(record.inputTokens || 0) }}</td>
+                <td class="px-3 py-2 text-right text-xs">{{ formatNumber(record.outputTokens || 0) }}</td>
+                <td class="px-3 py-2 text-right text-xs">{{ formatNumber(record.cacheCreateTokens || 0) }}</td>
+                <td class="px-3 py-2 text-right text-xs">{{ formatNumber(record.cacheReadTokens || 0) }}</td>
+                <td class="px-3 py-2 text-right text-xs font-semibold text-blue-600 dark:text-blue-300">
+                  {{ formatNumber(record.totalTokens || 0) }}
+                </td>
+                <td class="px-3 py-2 text-right text-xs font-semibold text-green-600 dark:text-green-300">
+                  {{ formatCostValue(record.cost || 0) }}
+                </td>
+                <td class="px-3 py-2 text-xs">
+                  <span
+                    :class="[
+                      'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+                      record.isLongContextRequest
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                    ]"
+                  >
+                    {{ record.isLongContextRequest ? '是' : '否' }}
+                  </span>
+                </td>
+                <td class="px-3 py-2 text-right text-xs">{{ record.responseTime || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          v-if="usageRecords.length > 0"
+          class="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 dark:text-gray-300"
+        >
+          <div>
+            第 {{ usagePagination.currentPage }} / {{ usagePagination.totalPages || 1 }} 页 · 共
+            {{ usagePagination.totalRecords }} 条
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              class="rounded-md border border-gray-300 px-3 py-1 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+              :disabled="!hasPreviousUsagePage"
+              @click="handleUsagePageChange(Math.max(1, usagePagination.currentPage - 1))"
+            >
+              上一页
+            </button>
+            <button
+              class="rounded-md border border-gray-300 px-3 py-1 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+              :disabled="!hasNextUsagePage"
+              @click="handleUsagePageChange(usagePagination.currentPage + 1)"
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -682,6 +868,7 @@ import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useThemeStore } from '@/stores/theme'
 import Chart from 'chart.js/auto'
+import { apiClient } from '@/config/api'
 
 const dashboardStore = useDashboardStore()
 const themeStore = useThemeStore()
@@ -753,6 +940,15 @@ const chartColors = computed(() => ({
   legend: isDarkMode.value ? '#e5e7eb' : '#374151'
 }))
 
+// 调用明细状态
+const usageRecords = ref([])
+const usagePagination = ref({ currentPage: 1, pageSize: 20, totalRecords: 0, totalPages: 0 })
+const usageFilters = ref({ model: '', accountId: '', accountType: '', keyId: '', sortOrder: 'desc' })
+const usageAvailableFilters = ref({ models: [], accounts: [], keys: [], dateRange: {} })
+const usageLoading = ref(false)
+const usageError = ref('')
+const usagePageSizeOptions = [20, 50, 100]
+
 // 格式化数字
 function formatNumber(num) {
   if (num >= 1000000) {
@@ -775,6 +971,171 @@ function formatCostValue(cost) {
   }
   return `$${cost.toFixed(6)}`
 }
+
+// 使用系统时区(UTC+8)获取某天起止时间
+function getSystemTimezoneDayForUsage(date = new Date(), startOfDay = true) {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const day = date.getDate()
+  if (startOfDay) {
+    return new Date(Date.UTC(year, month, day - 1, 16, 0, 0, 0))
+  }
+  return new Date(Date.UTC(year, month, day, 15, 59, 59, 999))
+}
+
+function buildUsageDateParams() {
+  // 自定义范围优先，直接沿用 store 已写入的系统时区字符串
+  if (dateFilter.value.type === 'custom' && dateFilter.value.customRange?.length === 2) {
+    return {
+      startDate: dateFilter.value.customRange[0],
+      endDate: dateFilter.value.customRange[1]
+    }
+  }
+
+  const preset = dateFilter.value.preset
+  const option = dateFilter.value.presetOptions.find((opt) => opt.value === preset)
+  const now = new Date()
+
+  // 小时粒度预设
+  if (preset === 'last24h') {
+    const end = new Date(now)
+    const start = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    return { startDate: start.toISOString(), endDate: end.toISOString() }
+  }
+  if (preset === 'yesterday') {
+    const y = new Date()
+    y.setDate(y.getDate() - 1)
+    return {
+      startDate: getSystemTimezoneDayForUsage(y, true).toISOString(),
+      endDate: getSystemTimezoneDayForUsage(y, false).toISOString()
+    }
+  }
+  if (preset === 'dayBefore') {
+    const d = new Date()
+    d.setDate(d.getDate() - 2)
+    return {
+      startDate: getSystemTimezoneDayForUsage(d, true).toISOString(),
+      endDate: getSystemTimezoneDayForUsage(d, false).toISOString()
+    }
+  }
+
+  // 日粒度预设 today / 7days / 30days
+  if (preset === 'today') {
+    return {
+      startDate: getSystemTimezoneDayForUsage(now, true).toISOString(),
+      endDate: getSystemTimezoneDayForUsage(now, false).toISOString()
+    }
+  }
+
+  if (option?.days) {
+    const start = new Date()
+    start.setDate(now.getDate() - (option.days - 1))
+    return {
+      startDate: getSystemTimezoneDayForUsage(start, true).toISOString(),
+      endDate: getSystemTimezoneDayForUsage(now, false).toISOString()
+    }
+  }
+
+  // 回退：近7天
+  const start = new Date()
+  start.setDate(now.getDate() - 6)
+  return {
+    startDate: getSystemTimezoneDayForUsage(start, true).toISOString(),
+    endDate: getSystemTimezoneDayForUsage(now, false).toISOString()
+  }
+}
+
+async function loadUsageRecords(options = {}) {
+  const { resetPage = false } = options
+  if (resetPage) {
+    usagePagination.value.currentPage = 1
+  }
+
+  usageLoading.value = true
+  usageError.value = ''
+
+  try {
+    const dateParams = buildUsageDateParams()
+
+    const params = {
+      page: usagePagination.value.currentPage,
+      pageSize: usagePagination.value.pageSize,
+      sortOrder: usageFilters.value.sortOrder
+    }
+
+    if (usageFilters.value.model) params.model = usageFilters.value.model
+    if (usageFilters.value.accountId) params.accountId = usageFilters.value.accountId
+    if (usageFilters.value.accountType) params.accountType = usageFilters.value.accountType
+    if (usageFilters.value.keyId) params.keyId = usageFilters.value.keyId
+    if (dateParams.startDate) params.startDate = dateParams.startDate
+    if (dateParams.endDate) params.endDate = dateParams.endDate
+
+    const response = await apiClient.get('/admin/usage-records', { params })
+    if (response.success) {
+      usageRecords.value = response.data.records || []
+      usagePagination.value = {
+        currentPage: response.data.pagination.currentPage,
+        pageSize: response.data.pagination.pageSize,
+        totalRecords: response.data.pagination.totalRecords,
+        totalPages: response.data.pagination.totalPages
+      }
+      usageAvailableFilters.value = response.data.availableFilters || {
+        models: [],
+        accounts: [],
+        keys: [],
+        dateRange: {}
+      }
+    }
+  } catch (error) {
+    console.error('加载调用明细失败:', error)
+    usageError.value = error?.message || '加载调用明细失败'
+  } finally {
+    usageLoading.value = false
+  }
+}
+
+function handleUsagePageChange(page) {
+  usagePagination.value.currentPage = page
+  loadUsageRecords()
+}
+
+function handleUsagePageSizeChange(size) {
+  usagePagination.value.pageSize = size
+  usagePagination.value.currentPage = 1
+  loadUsageRecords()
+}
+
+function handleUsageFilterChange(field, value) {
+  usageFilters.value[field] = value
+  usagePagination.value.currentPage = 1
+  loadUsageRecords()
+}
+
+function handleUsageSortChange(order) {
+  usageFilters.value.sortOrder = order
+  usagePagination.value.currentPage = 1
+  loadUsageRecords()
+}
+
+function handleUsageAccountChange(value) {
+  if (!value) {
+    usageFilters.value.accountId = ''
+    usageFilters.value.accountType = ''
+  } else {
+    const [id, type] = value.split('::')
+    usageFilters.value.accountId = id || ''
+    usageFilters.value.accountType = type || ''
+  }
+  usagePagination.value.currentPage = 1
+  loadUsageRecords()
+}
+
+const hasNextUsagePage = computed(
+  () => usagePagination.value.currentPage < usagePagination.value.totalPages
+)
+const hasPreviousUsagePage = computed(
+  () => usagePagination.value.currentPage > 1 && usagePagination.value.totalPages > 0
+)
 
 // 计算百分比
 function calculatePercentage(value, stats) {
@@ -1482,13 +1843,22 @@ watch(accountUsageTrendData, () => {
   nextTick(() => createAccountUsageTrendChart())
 })
 
+watch(
+  dateFilter,
+  () => {
+    usagePagination.value.currentPage = 1
+    loadUsageRecords({ resetPage: true })
+  },
+  { deep: true }
+)
+
 // 刷新所有数据
 async function refreshAllData() {
   if (isRefreshing.value) return
 
   isRefreshing.value = true
   try {
-    await Promise.all([loadDashboardData(), refreshChartsData()])
+    await Promise.all([loadDashboardData(), refreshChartsData(), loadUsageRecords()])
   } finally {
     isRefreshing.value = false
   }
