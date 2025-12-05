@@ -321,12 +321,8 @@ class UnifiedOpenAIScheduler {
         }
       }
 
-      // 按最后使用时间排序（最久未使用的优先，与 Claude 保持一致）
-      const sortedAccounts = availableAccounts.sort((a, b) => {
-        const aLastUsed = new Date(a.lastUsedAt || 0).getTime()
-        const bLastUsed = new Date(b.lastUsedAt || 0).getTime()
-        return aLastUsed - bLastUsed // 最久未使用的优先
-      })
+      // 按 priority → lastUsedAt → createdAt 排序
+      const sortedAccounts = this._sortAccountsByPriority(availableAccounts)
 
       // 选择第一个账户
       const selectedAccount = sortedAccounts[0]
@@ -344,7 +340,7 @@ class UnifiedOpenAIScheduler {
       }
 
       logger.info(
-        `🎯 Selected account: ${selectedAccount.name} (${selectedAccount.accountId}, ${selectedAccount.accountType}) for API key ${apiKeyData.name}`
+        `🎯 Selected account: ${selectedAccount.name} (${selectedAccount.accountId}, ${selectedAccount.accountType}) for API key ${apiKeyData.name} | priority=${selectedAccount.priority}, lastUsedAt=${selectedAccount.lastUsedAt || '0'}`
       )
 
       // 更新账户的最后使用时间
@@ -494,20 +490,27 @@ class UnifiedOpenAIScheduler {
     return availableAccounts
   }
 
-  // 🔢 按优先级和最后使用时间排序账户（已废弃，改为与 Claude 保持一致，只按最后使用时间排序）
-  // _sortAccountsByPriority(accounts) {
-  //   return accounts.sort((a, b) => {
-  //     // 首先按优先级排序（数字越小优先级越高）
-  //     if (a.priority !== b.priority) {
-  //       return a.priority - b.priority
-  //     }
+  // 🔢 按优先级和时间排序账户：priority 越小越优先，同级按 lastUsedAt，其次 createdAt
+  _sortAccountsByPriority(accounts) {
+    return [...accounts].sort((a, b) => {
+      const priorityA = parseInt(a.priority, 10) || 50
+      const priorityB = parseInt(b.priority, 10) || 50
 
-  //     // 优先级相同时，按最后使用时间排序（最久未使用的优先）
-  //     const aLastUsed = new Date(a.lastUsedAt || 0).getTime()
-  //     const bLastUsed = new Date(b.lastUsedAt || 0).getTime()
-  //     return aLastUsed - bLastUsed
-  //   })
-  // }
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB
+      }
+
+      const aLastUsed = new Date(a.lastUsedAt || 0).getTime()
+      const bLastUsed = new Date(b.lastUsedAt || 0).getTime()
+      if (aLastUsed !== bLastUsed) {
+        return aLastUsed - bLastUsed
+      }
+
+      const aCreated = new Date(a.createdAt || 0).getTime()
+      const bCreated = new Date(b.createdAt || 0).getTime()
+      return aCreated - bCreated
+    })
+  }
 
   // 🔍 检查账户是否可用
   async _isAccountAvailable(accountId, accountType) {
@@ -909,12 +912,8 @@ class UnifiedOpenAIScheduler {
         throw error
       }
 
-      // 按最后使用时间排序（最久未使用的优先，与 Claude 保持一致）
-      const sortedAccounts = availableAccounts.sort((a, b) => {
-        const aLastUsed = new Date(a.lastUsedAt || 0).getTime()
-        const bLastUsed = new Date(b.lastUsedAt || 0).getTime()
-        return aLastUsed - bLastUsed // 最久未使用的优先
-      })
+      // 按 priority → lastUsedAt → createdAt 排序
+      const sortedAccounts = this._sortAccountsByPriority(availableAccounts)
 
       // 选择第一个账户
       const selectedAccount = sortedAccounts[0]
@@ -932,7 +931,7 @@ class UnifiedOpenAIScheduler {
       }
 
       logger.info(
-        `🎯 Selected account from group: ${selectedAccount.name} (${selectedAccount.accountId})`
+        `🎯 Selected account from group: ${selectedAccount.name} (${selectedAccount.accountId}) | priority=${selectedAccount.priority}, lastUsedAt=${selectedAccount.lastUsedAt || '0'}`
       )
 
       // 更新账户的最后使用时间
