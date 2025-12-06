@@ -1,0 +1,30 @@
+# 变更历史索引
+
+本文件记录所有已完成变更的索引，便于追溯和查询。
+
+---
+
+## 索引
+
+| 时间戳 | 功能名称 | 类型 | 状态 | 方案包路径 |
+|--------|----------|------|------|------------|
+| 202511270038 | agents-guide | 文档 | ✅已完成 | history/2025-11/202511270038_agents-guide/ |
+| 20251127124221 | openai_responses_group | 修复 | ✅已完成 | history/2025-11/20251127124221_openai_responses_group/ |
+| 202512051452 | dashboard_usage_detail | 功能 | ✅已完成 | history/2025-12/202512051452_dashboard_usage_detail/ |
+| 202512051030 | openai-responses-priority | 修复 | ✅已完成 | history/2025-12/202512051030_openai-responses-priority/ |
+| 202512062347 | dev-sync-enhance | 功能 | ⚠️部分 | history/2025-12/202512062347_dev-sync-enhance/ |
+
+---
+
+## 按月归档
+
+### 2025-11
+
+- [202511270038_agents-guide](2025-11/202511270038_agents-guide/) - 贡献者指南文档
+- [20251127124221_openai_responses_group](2025-11/20251127124221_openai_responses_group/) - 修复 OpenAI-Responses 分组保存
+
+### 2025-12
+
+- [202512051452_dashboard_usage_detail](2025-12/202512051452_dashboard_usage_detail/) - 仪表板新增调用明细区块
+- [202512051030_openai-responses-priority](2025-12/202512051030_openai-responses-priority/) - 修复 OpenAI-Responses 调度优先级排序
+- [202512062347_dev-sync-enhance](2025-12/202512062347_dev-sync-enhance/) - 并行增强迁移 dev 功能至 main 分支新路由/视图

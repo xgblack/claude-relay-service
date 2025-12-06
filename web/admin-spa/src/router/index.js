@@ -10,10 +10,12 @@ const UserDashboardView = () => import('@/views/UserDashboardView.vue')
 const UserManagementView = () => import('@/views/UserManagementView.vue')
 const MainLayout = () => import('@/components/layout/MainLayout.vue')
 const DashboardView = () => import('@/views/DashboardView.vue')
+const DashboardPlusView = () => import('@/views/DashboardPlusView.vue')
 const ApiKeysView = () => import('@/views/ApiKeysView.vue')
 const ApiKeyUsageRecordsView = () => import('@/views/ApiKeyUsageRecordsView.vue')
 const AccountsView = () => import('@/views/AccountsView.vue')
 const AccountUsageRecordsView = () => import('@/views/AccountUsageRecordsView.vue')
+const AccountUsageRecordsPlusView = () => import('@/views/AccountUsageRecordsPlusView.vue')
 const TutorialView = () => import('@/views/TutorialView.vue')
 const SettingsView = () => import('@/views/SettingsView.vue')
 const ApiStatsView = () => import('@/views/ApiStatsView.vue')
@@ -76,6 +78,18 @@ const routes = [
     ]
   },
   {
+    path: '/dashboard-plus',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'DashboardPlus',
+        component: DashboardPlusView
+      }
+    ]
+  },
+  {
     path: '/api-keys',
     component: MainLayout,
     meta: { requiresAuth: true },
@@ -120,6 +134,18 @@ const routes = [
         path: '',
         name: 'AccountUsageRecords',
         component: AccountUsageRecordsView
+      }
+    ]
+  },
+  {
+    path: '/accounts/:accountId/usage-records-plus',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'AccountUsageRecordsPlus',
+        component: AccountUsageRecordsPlusView
       }
     ]
   },
