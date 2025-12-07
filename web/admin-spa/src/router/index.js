@@ -10,7 +10,6 @@ const UserDashboardView = () => import('@/views/UserDashboardView.vue')
 const UserManagementView = () => import('@/views/UserManagementView.vue')
 const MainLayout = () => import('@/components/layout/MainLayout.vue')
 const DashboardView = () => import('@/views/DashboardView.vue')
-const DashboardPlusView = () => import('@/views/DashboardPlusView.vue')
 const ApiKeysView = () => import('@/views/ApiKeysView.vue')
 const ApiKeyUsageRecordsView = () => import('@/views/ApiKeyUsageRecordsView.vue')
 const AccountsView = () => import('@/views/AccountsView.vue')
@@ -74,18 +73,6 @@ const routes = [
         path: '',
         name: 'Dashboard',
         component: DashboardView
-      }
-    ]
-  },
-  {
-    path: '/dashboard-plus',
-    component: MainLayout,
-    meta: { requiresAuth: true },
-    children: [
-      {
-        path: '',
-        name: 'DashboardPlus',
-        component: DashboardPlusView
       }
     ]
   },

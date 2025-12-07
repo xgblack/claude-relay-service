@@ -97,6 +97,22 @@
           </div>
 
           <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+            <!-- 调用明细按钮 -->
+            <div class="relative">
+              <el-tooltip content="查看调用明细（增强版）" effect="dark" placement="bottom">
+                <button
+                  class="group relative flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-300 hover:shadow-md dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-500 sm:w-auto"
+                  @click="openUsageRecordsModal"
+                >
+                  <div
+                    class="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 opacity-0 blur transition duration-300 group-hover:opacity-20"
+                  ></div>
+                  <i class="fas fa-list relative text-cyan-500" />
+                  <span class="relative">明细</span>
+                </button>
+              </el-tooltip>
+            </div>
+
             <!-- 账户统计按钮 -->
             <div class="relative">
               <el-tooltip content="查看账户统计汇总" effect="dark" placement="bottom">
@@ -2019,6 +2035,19 @@
         </p>
       </div>
     </el-dialog>
+
+    <!-- 调用明细弹窗（增强版） -->
+    <el-dialog
+      v-model="showUsageRecordsModal"
+      align-center
+      custom-class="usage-dialog"
+      :modal="false"
+      :show-close="true"
+      title="调用明细"
+      width="98%"
+    >
+      <UsageRecordsPlusView />
+    </el-dialog>
   </div>
 </template>
 
@@ -2035,6 +2064,7 @@ import AccountTestModal from '@/components/accounts/AccountTestModal.vue'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import CustomDropdown from '@/components/common/CustomDropdown.vue'
 import ActionDropdown from '@/components/common/ActionDropdown.vue'
+import UsageRecordsPlusView from '@/views/UsageRecordsPlusView.vue'
 
 // 使用确认弹窗
 const { showConfirmModal, confirmOptions, showConfirm, handleConfirm, handleCancel } = useConfirm()
@@ -2101,6 +2131,8 @@ const testingAccount = ref(null)
 
 // 账户统计弹窗状态
 const showAccountStatsModal = ref(false)
+// 调用明细弹窗状态
+const showUsageRecordsModal = ref(false)
 
 // 表格横向滚动检测
 const tableContainerRef = ref(null)
@@ -2162,6 +2194,10 @@ const platformHierarchy = [
     children: [{ value: 'droid', label: 'Droid', icon: 'fa-robot' }]
   }
 ]
+
+const openUsageRecordsModal = () => {
+  showUsageRecordsModal.value = true
+}
 
 // 平台分组映射
 const platformGroupMap = {
@@ -4486,6 +4522,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 调用明细弹窗尺寸与布局 */
+:global(.usage-dialog .el-dialog) {
+  max-width: 1100px;
+  width: 85% !important;
+}
+:global(.usage-dialog .el-dialog__body) {
+  padding: 8px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  height: 60vh;
+  box-sizing: border-box;
+}
 .accounts-container {
   min-height: calc(100vh - 300px);
 }

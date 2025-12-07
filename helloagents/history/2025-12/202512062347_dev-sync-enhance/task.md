@@ -10,7 +10,7 @@
 - [√] 1.3 新增 `src/services/unifiedOpenAIScheduler.plus.js`，实现 priority/lastUsedAt/createdAt 排序调度，兼容 OpenAI Responses，验证 why.md#需求-调度与账户优先级优化-场景-选择下发账户
 
 ## 2. 前端增强
-- [√] 2.1 新增 `web/admin-spa/src/views/DashboardPlusView.vue` 及路由入口，展示相对时间与本地时区，验证 why.md#需求-仪表盘相对时间与明细视图
+- [√] 2.1 新增 `web/admin-spa/src/views/UsageRecordsPlusView.vue` 并以弹窗形式嵌入 AccountsView，“明细”按钮触发；保留 `/dashboard-plus` 访问路径
 - [√] 2.2 新增 `web/admin-spa/src/views/AccountUsageRecordsPlusView.vue` 及表格组件，调用新接口展示调用明细，验证 why.md#需求-调用明细查询增强-场景-查询某-api-key-调用记录
 
 ## 3. 安全检查
