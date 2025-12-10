@@ -79,8 +79,22 @@ router.get('/usage-records-timeline', authenticateAdmin, async (req, res) => {
       ? parsedPageSize
       : DEFAULT_USAGE_RECORDS_PAGE_SIZE
 
-    const startTime = startDate ? new Date(startDate) : null
-    const endTime = endDate ? new Date(endDate) : null
+    // 默认使用当天 00:00:00 - 23:59:59.999 的时间范围（本地时区）
+    const defaultStart = new Date()
+    defaultStart.setHours(0, 0, 0, 0)
+    const defaultEnd = new Date()
+    defaultEnd.setHours(23, 59, 59, 999)
+
+    const startTime = startDate ? new Date(startDate) : defaultStart
+    const endTime = endDate ? new Date(endDate) : defaultEnd
+
+    // 归一化到本地时区日界线：若传入字符串含时区，则使用其绝对时间；默认今日需覆盖全天
+    if (!startDate) {
+      startTime.setHours(0, 0, 0, 0)
+    }
+    if (!endDate) {
+      endTime.setHours(23, 59, 59, 999)
+    }
     if (
       (startDate && Number.isNaN(startTime?.getTime())) ||
       (endDate && Number.isNaN(endTime?.getTime()))
@@ -325,17 +339,36 @@ router.get('/usage-records-timeline', authenticateAdmin, async (req, res) => {
       return info
     }
 
-    const enrichedRecords = []
-    const summary = {
-      totalRequests: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      cacheCreateTokens: 0,
-      cacheReadTokens: 0,
-      totalTokens: 0,
-      totalCost: 0,
-      avgCost: 0
+    // 统计基于当前查询时间范围的全量记录
+    const summary = allRecords.reduce(
+      (acc, record) => {
+        acc.totalRequests += 1
+        acc.inputTokens += record.inputTokens
+        acc.outputTokens += record.outputTokens
+        acc.cacheCreateTokens += record.cacheCreateTokens
+        acc.cacheReadTokens += record.cacheReadTokens
+        acc.totalTokens += record.totalTokens
+        acc.totalCost += record.cost
+        return acc
+      },
+      {
+        totalRequests: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheCreateTokens: 0,
+        cacheReadTokens: 0,
+        totalTokens: 0,
+        totalCost: 0,
+        avgCost: 0
+      }
+    )
+
+    if (summary.totalRequests > 0) {
+      summary.avgCost = Number((summary.totalCost / summary.totalRequests).toFixed(6))
+      summary.totalCost = Number(summary.totalCost.toFixed(6))
     }
+
+    const enrichedRecords = []
 
     for (const record of pageRecords) {
       const accountInfo = resolveAccountInfo(record.accountId, record.accountType)

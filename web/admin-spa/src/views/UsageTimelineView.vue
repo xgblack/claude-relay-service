@@ -60,11 +60,11 @@
           class="max-w-[320px]"
           clearable
           end-placeholder="结束时间"
-          format="YYYY-MM-DD HH:mm:ss"
+          format="MM-DD HH:mm:ss"
           start-placeholder="开始时间"
           type="datetimerange"
           unlink-panels
-          value-format="YYYY-MM-DDTHH:mm:ss[Z]"
+          value-format="YYYY-MM-DDTHH:mm:ssZ"
         />
 
         <el-select
@@ -345,6 +345,12 @@ const formatCost = (value) => {
 const formatDate = (value) => (value ? dayjs(value).format('MM-DD HH:mm:ss') : '--')
 const formatRelative = (value) => (value ? dayjs(value).fromNow() : '--')
 
+const setTodayRange = () => {
+  const start = dayjs().startOf('day').format('YYYY-MM-DDTHH:mm:ssZ')
+  const end = dayjs().endOf('day').format('YYYY-MM-DDTHH:mm:ssZ')
+  filters.dateRange = [start, end]
+}
+
 const buildParams = (page) => {
   const params = {
     page,
@@ -408,13 +414,14 @@ const resetFilters = () => {
   filters.keyId = ''
   filters.accountId = ''
   filters.model = ''
-  filters.dateRange = null
+  setTodayRange()
   filters.sortOrder = 'desc'
   pagination.currentPage = 1
   fetchRecords(1)
 }
 
 onMounted(() => {
+  setTodayRange()
   fetchRecords(1)
 })
 </script>
