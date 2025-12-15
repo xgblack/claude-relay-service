@@ -1918,7 +1918,7 @@ router.get('/api-keys/:keyId/usage-records', authenticateAdmin, async (req, res)
       return res.status(404).json({ success: false, error: 'API key not found' })
     }
 
-    const rawRecords = await redis.getUsageRecords(keyId, 5000)
+    const rawRecords = await redis.getUsageRecords(keyId, 20000)
 
     const accountServices = [
       { type: 'claude', getter: (id) => claudeAccountService.getAccount(id) },
@@ -2307,7 +2307,7 @@ router.get('/accounts/:accountId/usage-records', authenticateAdmin, async (req, 
       const batchResults = await Promise.all(
         batch.map(async (key) => {
           try {
-            const records = await redis.getUsageRecords(key.id, 5000)
+            const records = await redis.getUsageRecords(key.id, 20000)
             return { keyId: key.id, records: records || [] }
           } catch (error) {
             logger.debug(`⚠️ Failed to get usage records for key ${key.id}: ${error.message}`)

@@ -17,8 +17,8 @@ const router = express.Router()
 // 分页与安全阈值
 const USAGE_RECORDS_PAGE_SIZES = [20, 50, 100]
 const DEFAULT_USAGE_RECORDS_PAGE_SIZE = 20
-const MAX_USAGE_RECORDS_PER_KEY = 5000
-const MAX_TOTAL_USAGE_RECORDS = 20000
+const MAX_USAGE_RECORDS_PER_KEY = 20000
+const MAX_TOTAL_USAGE_RECORDS = 60000
 
 const accountTypeNames = {
   claude: 'Claude官方',
@@ -115,7 +115,7 @@ router.get('/usage-records-timeline', authenticateAdmin, async (req, res) => {
       keyIds = [keyId]
     } else {
       const scanned = await redis.scanApiKeyIds()
-      keyIds = scanned.slice(0, 200) // 保护上限
+      keyIds = scanned
     }
 
     if (keyIds.length === 0) {
@@ -382,19 +382,6 @@ router.get('/usage-records-timeline', authenticateAdmin, async (req, res) => {
         accountTypeName: accountTypeNames[resolvedType] || '未知渠道'
       }
       enrichedRecords.push(enriched)
-
-      summary.totalRequests += 1
-      summary.inputTokens += record.inputTokens
-      summary.outputTokens += record.outputTokens
-      summary.cacheCreateTokens += record.cacheCreateTokens
-      summary.cacheReadTokens += record.cacheReadTokens
-      summary.totalTokens += record.totalTokens
-      summary.totalCost += record.cost
-    }
-
-    if (summary.totalRequests > 0) {
-      summary.avgCost = Number((summary.totalCost / summary.totalRequests).toFixed(6))
-      summary.totalCost = Number(summary.totalCost.toFixed(6))
     }
 
     const accountOptions = []
