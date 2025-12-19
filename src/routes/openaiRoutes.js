@@ -93,6 +93,18 @@ async function applyRateLimitTracking(req, usageSummary, model, context = '') {
   }
 }
 
+// Debug: log full request details for /openai routes (temporary)
+// router.use((req, res, next) => {
+//   logger.api('*** OpenAI 完整请求信息 ', {
+//     method: req.method,
+//     path: req.originalUrl || req.url,
+//     headers: req.headers,
+//     query: req.query,
+//     body: req.body
+//   })
+//   next()
+// })
+
 // 使用统一调度器选择 OpenAI 账户
 async function getOpenAIAuthToken(apiKeyData, sessionId = null, requestedModel = null) {
   try {
