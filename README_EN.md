@@ -1,9 +1,9 @@
 # Claude Relay Service
 
 > [!CAUTION]
-> **Security Update**: v1.1.240 and below contain a critical admin authentication bypass vulnerability allowing unauthorized access to the admin panel.
+> **Security Update**: v1.1.248 and below contain a critical admin authentication bypass vulnerability allowing unauthorized access to the admin panel.
 >
-> **Please update to v1.1.241+ immediately**, or migrate to the next-generation project **[CRS 2.0 (sub2api)](https://github.com/Wei-Shaw/sub2api)**
+> **Please update to v1.1.249+ immediately**, or migrate to the next-generation project **[CRS 2.0 (sub2api)](https://github.com/Wei-Shaw/sub2api)**
 
 <div align="center">
 
@@ -243,29 +243,11 @@ Now you can replace the official API with your own service:
 
 **Claude Code Set Environment Variables:**
 
-Default uses standard Claude account pool (Claude/Console/Bedrock/CCR):
+Default uses standard Claude account pool:
 
 ```bash
 export ANTHROPIC_BASE_URL="http://127.0.0.1:3000/api/" # Fill in your server's IP address or domain
 export ANTHROPIC_AUTH_TOKEN="API key created in the backend"
-```
-
-If you want Claude Code to use Gemini OAuth accounts via the Anthropic protocol (path-based routing, no vendor prefix in `model`):
-
-Antigravity OAuth (supports `claude-opus-4-5` and other Antigravity models):
-
-```bash
-export ANTHROPIC_BASE_URL="http://127.0.0.1:3000/antigravity/api/"
-export ANTHROPIC_AUTH_TOKEN="API key created in the backend (permissions must be all or gemini)"
-export ANTHROPIC_MODEL="claude-opus-4-5"
-```
-
-Gemini CLI OAuth (Gemini models):
-
-```bash
-export ANTHROPIC_BASE_URL="http://127.0.0.1:3000/gemini-cli/api/"
-export ANTHROPIC_AUTH_TOKEN="API key created in the backend (permissions must be all or gemini)"
-export ANTHROPIC_MODEL="gemini-2.5-pro"
 ```
 
 **VSCode Claude Plugin Configuration:**
